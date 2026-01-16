@@ -1,0 +1,24 @@
+Stack Technique
+ 
+Backend (Python/FastAPI)
+ 
+framework: FastAPI
+ml_framework: PyTorch, Ultralytics (YOLO)
+model_serving: TorchServe, ONNX Runtime
+database: 
+  - PostgreSQL (données structurées)
+  - Redis (cache/sessions)
+  - MinIO (stockage images)
+ 
+Application Flutter (Mobile + Web)
+ 
+framework: Flutter 3.0+
+state_management: Riverpod/Bloc
+navigation: GoRouter/AutoRoute
+http_client: Dio
+local_storage: Hive/SharedPreferences
+camera: camera package + image_picker
+ml_inference: tflite_flutter / onnx_runtime
+notifications: firebase_messaging / local_notifications
+ui_framework: Flutter Material 3 + custom themes
+charts: fl_chart / syncfusion_flutter_charts
