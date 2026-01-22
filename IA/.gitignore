@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Dataset (trop volumineux pour git)
+data/raw/
+data/processed/
+*.parquet
+*.arrow
+
+# Models (trop volumineux pour git)
+models/dress_code_detection_*/
+models/pretrained/
+*.pt
+*.pth
+*.onnx
+*.torchscript
+*.tflite
+
+# Garder uniquement le modèle final
+!models/final/best_model.pt
+
+# Results
+results/
+logs/
+runs/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# WandB (si utilisé)
+wandb/
+
+# Cache
+.cache/
+*.cache
