@@ -22,50 +22,72 @@ MODELS_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
 RESULTS_DIR.mkdir(exist_ok=True)
 
-# Hyperparamètres d'entraînement
+# =============================================================================
+# CONFIGURATION OPTIMISÉE POUR :
+# - GPU : RTX 3070 Ti (8 Go VRAM)
+# - RAM : 32 Go
+# - CPU : Intel i7-12700K (12 cores / 20 threads)
+# =============================================================================
+
 TRAINING_CONFIG = {
-    # Modèle de base (options: yolov8n, yolov8s, yolov8m, yolov8l, yolov8x)
+    # Modèle de base - YOLO11 (dernière version Ultralytics)
+    # Options: yolo11n, yolo11s, yolo11m, yolo11l, yolo11x
     # n = nano (plus rapide, moins précis)
-    # s = small
-    # m = medium
-    # l = large
+    # s = small (bon compromis vitesse/précision)
+    # m = medium (meilleure précision, plus lent) ← RECOMMANDÉ pour +précision
+    # l = large (nécessite plus de VRAM)
     # x = extra large (plus lent, plus précis)
-    "model_size": "yolov8n",  # Commencer avec nano pour des tests rapides
-    # Paramètres d'entraînement
-    "epochs": 100,  # Nombre d'époques (augmenter à 100-300 pour production)
-    "batch": 16,  # Taille du batch (ajuster selon RAM/GPU)
-    "imgsz": 640,  # Taille des images d'entrée
-    "patience": 50,  # Early stopping patience
-    # Optimisation
-    "optimizer": "Adam",  # Options: SGD, Adam, AdamW
-    "lr0": 0.01,  # Learning rate initial
-    "lrf": 0.01,  # Learning rate final (lr0 * lrf)
+    "model_size": "yolo11m",  # YOLO11 Medium = +2-5% mAP vs YOLOv8
+    
+    # Paramètres d'entraînement - OPTIMISÉS RTX 3070 Ti (8 Go VRAM)
+    "epochs": 150,  # Plus d'époques pour une meilleure convergence
+    "batch": 16,  # Réduit pour YOLOv8m (modèle plus gros)
+    "imgsz": 640,  # Taille standard, bon compromis vitesse/précision
+    "patience": 50,  # Early stopping augmenté - plus de temps pour converger
+    
+    # Optimisation - AdamW recommandé pour YOLO
+    "optimizer": "AdamW",  # Meilleur que Adam pour la régularisation
+    "lr0": 0.005,  # Learning rate initial (réduit pour meilleure convergence)
+    "lrf": 0.001,  # Learning rate final (lr0 * lrf)
     "momentum": 0.937,  # Momentum SGD
-    "weight_decay": 0.0005,  # Weight decay
-    # Augmentation de données
-    "hsv_h": 0.015,  # Augmentation de teinte
-    "hsv_s": 0.7,  # Augmentation de saturation
-    "hsv_v": 0.4,  # Augmentation de valeur
-    "degrees": 0.0,  # Rotation d'image
-    "translate": 0.1,  # Translation d'image
-    "scale": 0.5,  # Échelle d'image
-    "shear": 0.0,  # Cisaillement d'image
-    "perspective": 0.0,  # Perspective d'image
-    "flipud": 0.0,  # Retournement vertical
-    "fliplr": 0.5,  # Retournement horizontal
-    "mosaic": 1.0,  # Augmentation mosaïque
-    "mixup": 0.0,  # Augmentation mixup
-    # Autres paramètres
+    "weight_decay": 0.0005,  # Weight decay (régularisation L2)
+    "warmup_epochs": 3.0,  # Époques de warmup pour stabiliser le début
+    "warmup_momentum": 0.8,  # Momentum pendant le warmup
+    "warmup_bias_lr": 0.1,  # Learning rate du biais pendant warmup
+    
+    # Augmentation de données - RENFORCÉ pour meilleure précision
+    "hsv_h": 0.02,  # Augmentation de teinte (couleurs des vêtements)
+    "hsv_s": 0.8,  # Augmentation de saturation (augmenté)
+    "hsv_v": 0.5,  # Augmentation de valeur/luminosité (augmenté)
+    "degrees": 15.0,  # Rotation augmentée (accessoires = angles variés)
+    "translate": 0.15,  # Translation d'image (augmenté)
+    "scale": 0.6,  # Échelle d'image (augmenté pour petits objets)
+    "shear": 3.0,  # Cisaillement augmenté
+    "perspective": 0.0002,  # Légère perspective
+    "flipud": 0.0,  # Pas de retournement vertical (personnes)
+    "fliplr": 0.5,  # Retournement horizontal OK
+    "mosaic": 1.0,  # Augmentation mosaïque (très efficace)
+    "mixup": 0.2,  # Augmentation mixup renforcée
+    "copy_paste": 0.2,  # Copy-paste augmentation renforcée (aide petits objets)
+    
+    # Performance - OPTIMISÉ pour 32 Go RAM + i7-12700K
     "save": True,  # Sauvegarder les checkpoints
-    "save_period": 10,  # Sauvegarder tous les N époques
-    "cache": False,  # Cache les images en RAM (True si RAM > 16GB)
-    "device": "auto",  # 'auto', 'cpu', '0', '0,1,2,3' pour multi-GPU
-    "workers": 8,  # Nombre de workers pour le DataLoader
+    "save_period": 10,  # Sauvegarder tous les 10 époques
+    "cache": "ram",  # ✅ ACTIVÉ - Cache images en RAM (32 Go = largement suffisant)
+    "device": "0",  # GPU 0 (ta RTX 3070 Ti)
+    "workers": 12,  # ✅ Optimisé pour i7-12700K (12 cores physiques)
+    "amp": True,  # ✅ Mixed Precision - Accélère l'entraînement sur RTX 30xx
+    "rect": False,  # Rectangular training (False = plus stable)
+    "cos_lr": True,  # ✅ Cosine LR scheduler (meilleure convergence)
+    "close_mosaic": 10,  # Désactive mosaic les 10 dernières époques
+    
+    # Sauvegarde et logs
     "project": str(MODELS_DIR),
     "name": f"dress_code_detection_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
     "exist_ok": True,
     "pretrained": True,
     "verbose": True,
+    "plots": True,  # Génère les graphiques d'entraînement
 }
 
 
