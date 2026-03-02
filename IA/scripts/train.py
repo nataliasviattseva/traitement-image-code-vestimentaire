@@ -1,5 +1,11 @@
 """
 Script d'entraînement du modèle YOLOv8 pour la détection du code vestimentaire
+Adapté pour le dataset Fashionpedia complet avec mapping ENSITECH
+
+Classes détectées :
+  0: short_bermuda   (short, bermuda, short de sport)
+  1: jupe_courte     (jupe / mini-jupe)
+  2: couvre_chef     (casquette, chapeau, bonnet, bandana)
 """
 
 import os
@@ -22,72 +28,68 @@ MODELS_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
 RESULTS_DIR.mkdir(exist_ok=True)
 
-# =============================================================================
-# CONFIGURATION OPTIMISÉE POUR :
-# - GPU : RTX 3070 Ti (8 Go VRAM)
-# - RAM : 32 Go
-# - CPU : Intel i7-12700K (12 cores / 20 threads)
-# =============================================================================
-
+# Hyperparamètres d'entraînement
 TRAINING_CONFIG = {
-    # Modèle de base - YOLO11 (dernière version Ultralytics)
-    # Options: yolo11n, yolo11s, yolo11m, yolo11l, yolo11x
-    # n = nano (plus rapide, moins précis)
-    # s = small (bon compromis vitesse/précision)
-    # m = medium (meilleure précision, plus lent) ← RECOMMANDÉ pour +précision
-    # l = large (nécessite plus de VRAM)
-    # x = extra large (plus lent, plus précis)
-    "model_size": "yolo11m",  # YOLO11 Medium = +2-5% mAP vs YOLOv8
-    
-    # Paramètres d'entraînement - OPTIMISÉS RTX 3070 Ti (8 Go VRAM)
-    "epochs": 150,  # Plus d'époques pour une meilleure convergence
-    "batch": 16,  # Réduit pour YOLOv8m (modèle plus gros)
-    "imgsz": 640,  # Taille standard, bon compromis vitesse/précision
-    "patience": 50,  # Early stopping augmenté - plus de temps pour converger
-    
-    # Optimisation - AdamW recommandé pour YOLO
-    "optimizer": "AdamW",  # Meilleur que Adam pour la régularisation
-    "lr0": 0.005,  # Learning rate initial (réduit pour meilleure convergence)
-    "lrf": 0.001,  # Learning rate final (lr0 * lrf)
-    "momentum": 0.937,  # Momentum SGD
-    "weight_decay": 0.0005,  # Weight decay (régularisation L2)
-    "warmup_epochs": 3.0,  # Époques de warmup pour stabiliser le début
-    "warmup_momentum": 0.8,  # Momentum pendant le warmup
-    "warmup_bias_lr": 0.1,  # Learning rate du biais pendant warmup
-    
-    # Augmentation de données - RENFORCÉ pour meilleure précision
-    "hsv_h": 0.02,  # Augmentation de teinte (couleurs des vêtements)
-    "hsv_s": 0.8,  # Augmentation de saturation (augmenté)
-    "hsv_v": 0.5,  # Augmentation de valeur/luminosité (augmenté)
-    "degrees": 15.0,  # Rotation augmentée (accessoires = angles variés)
-    "translate": 0.15,  # Translation d'image (augmenté)
-    "scale": 0.6,  # Échelle d'image (augmenté pour petits objets)
-    "shear": 3.0,  # Cisaillement augmenté
-    "perspective": 0.0002,  # Légère perspective
-    "flipud": 0.0,  # Pas de retournement vertical (personnes)
-    "fliplr": 0.5,  # Retournement horizontal OK
-    "mosaic": 1.0,  # Augmentation mosaïque (très efficace)
-    "mixup": 0.2,  # Augmentation mixup renforcée
-    "copy_paste": 0.2,  # Copy-paste augmentation renforcée (aide petits objets)
-    
-    # Performance - OPTIMISÉ pour 32 Go RAM + i7-12700K
-    "save": True,  # Sauvegarder les checkpoints
-    "save_period": 10,  # Sauvegarder tous les 10 époques
-    "cache": "ram",  # ✅ ACTIVÉ - Cache images en RAM (32 Go = largement suffisant)
-    "device": "0",  # GPU 0 (ta RTX 3070 Ti)
-    "workers": 12,  # ✅ Optimisé pour i7-12700K (12 cores physiques)
-    "amp": True,  # ✅ Mixed Precision - Accélère l'entraînement sur RTX 30xx
-    "rect": False,  # Rectangular training (False = plus stable)
-    "cos_lr": True,  # ✅ Cosine LR scheduler (meilleure convergence)
-    "close_mosaic": 10,  # Désactive mosaic les 10 dernières époques
-    
-    # Sauvegarde et logs
+    # -----------------------------------------------------------------------
+    # Modèle de base
+    # -----------------------------------------------------------------------
+    # yolov8n = nano (rapide, moins précis) - bon pour les tests
+    # yolov8s = small - bon compromis vitesse/précision
+    # yolov8m = medium - recommandé pour la production
+    # yolov8l = large - meilleure précision, plus lent
+    # yolov8x = extra large - le plus précis, le plus lent
+    "model_size": "yolov8s",  # Small : bon compromis pour 3 classes
+
+    # -----------------------------------------------------------------------
+    # Paramètres d'entraînement
+    # -----------------------------------------------------------------------
+    "epochs": 150,            # Plus d'époques car on a beaucoup de négatifs
+    "batch": 16,              # Ajuster selon ta RAM/GPU (8 si peu de VRAM)
+    "imgsz": 640,             # Taille standard
+    "patience": 30,           # Early stopping - réduit car 3 classes seulement
+
+    # -----------------------------------------------------------------------
+    # Optimisation
+    # -----------------------------------------------------------------------
+    "optimizer": "AdamW",     # AdamW est généralement meilleur que Adam
+    "lr0": 0.001,             # Learning rate initial (plus bas qu'avant)
+    "lrf": 0.01,              # Learning rate final (lr0 * lrf)
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 5,       # Warmup pour stabiliser le début de l'entraînement
+
+    # -----------------------------------------------------------------------
+    # Augmentation de données
+    # -----------------------------------------------------------------------
+    "hsv_h": 0.015,           # Teinte
+    "hsv_s": 0.7,             # Saturation
+    "hsv_v": 0.4,             # Valeur/luminosité
+    "degrees": 10.0,          # Rotation (utile pour détecter couvre-chefs inclinés)
+    "translate": 0.1,         # Translation
+    "scale": 0.5,             # Échelle
+    "shear": 2.0,             # Léger cisaillement
+    "perspective": 0.0001,    # Légère perspective
+    "flipud": 0.0,            # Pas de retournement vertical
+    "fliplr": 0.5,            # Retournement horizontal
+    "mosaic": 1.0,            # Mosaïque (désactivé automatiquement les 10 dernières époques)
+    "mixup": 0.1,             # Léger mixup pour la robustesse
+    "copy_paste": 0.1,        # Copy-paste augmentation
+
+    # -----------------------------------------------------------------------
+    # Autres paramètres
+    # -----------------------------------------------------------------------
+    "save": True,
+    "save_period": 10,        # Checkpoint tous les 10 époques
+    "cache": False,           # True si RAM > 16GB pour accélérer
+    "device": "auto",
+    "workers": 8,
     "project": str(MODELS_DIR),
-    "name": f"dress_code_detection_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+    "name": f"dress_code_v2_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
     "exist_ok": True,
     "pretrained": True,
     "verbose": True,
-    "plots": True,  # Génère les graphiques d'entraînement
+    "plots": True,            # Générer les graphiques de métriques
+    "val": True,              # Valider pendant l'entraînement
 }
 
 
@@ -102,19 +104,29 @@ def check_gpu():
         gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
         print(f"✅ GPU disponible : {gpu_name}")
         print(f"   Mémoire GPU : {gpu_memory:.2f} GB")
+
+        # Ajuster le batch size selon la VRAM
+        if gpu_memory < 4:
+            print("⚠️  VRAM faible, batch size recommandé : 8")
+        elif gpu_memory < 8:
+            print("ℹ️  VRAM correcte, batch size recommandé : 16")
+        else:
+            print("ℹ️  VRAM suffisante, batch size recommandé : 16-32")
+
         return "cuda"
-    elif torch.backends.mps.is_available():
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         print("✅ Apple Silicon (MPS) disponible")
         return "mps"
     else:
         print("⚠️  Pas de GPU détecté, utilisation du CPU")
-        print("   L'entraînement sera plus lent.")
+        print("   L'entraînement sera significativement plus lent.")
+        print("   Conseil : réduire batch size à 8 et epochs à 50 pour tester")
         return "cpu"
 
 
 def load_dataset_config():
     """
-    Charge la configuration du dataset
+    Charge et vérifie la configuration du dataset
     """
     yaml_path = DATA_PROCESSED / "data.yaml"
 
@@ -129,8 +141,27 @@ def load_dataset_config():
 
     print(f"\n📊 Configuration du dataset :")
     print(f"   Nombre de classes : {config['nc']}")
-    print(f"   Classes : {', '.join(config['names'])}")
+    print(f"   Classes :")
+    for i, name in enumerate(config['names']):
+        print(f"     [{i}] {name}")
     print(f"   Chemin : {config['path']}")
+
+    # Vérifier que les dossiers existent et contiennent des fichiers
+    base_path = Path(config['path'])
+    for split in ['train', 'val']:
+        img_dir = base_path / split / 'images'
+        lbl_dir = base_path / split / 'labels'
+        if img_dir.exists():
+            n_images = len(list(img_dir.glob('*.jpg')))
+            n_labels = len(list(lbl_dir.glob('*.txt')))
+
+            # Compter les labels non vides (images avec violations)
+            n_positive = sum(
+                1 for f in lbl_dir.glob('*.txt') if f.stat().st_size > 0
+            )
+            print(f"   {split}: {n_images} images, {n_labels} labels ({n_positive} positifs)")
+        else:
+            print(f"   ⚠️  Dossier manquant : {img_dir}")
 
     return yaml_path
 
@@ -138,10 +169,6 @@ def load_dataset_config():
 def train_model(yaml_path, device):
     """
     Entraîne le modèle YOLO
-
-    Args:
-        yaml_path: Chemin vers le fichier de configuration du dataset
-        device: Device à utiliser ('cpu', 'cuda', 'mps')
     """
     print("\n" + "=" * 60)
     print("DÉMARRAGE DE L'ENTRAÎNEMENT")
@@ -152,14 +179,13 @@ def train_model(yaml_path, device):
     print(f"\n📦 Chargement du modèle : {model_name}")
     model = YOLO(model_name)
 
-    print(f"\n⚙️  Configuration de l'entraînement :")
+    print(f"\n⚙️  Configuration :")
+    print(f"   Modèle : {TRAINING_CONFIG['model_size']}")
     print(f"   Époques : {TRAINING_CONFIG['epochs']}")
     print(f"   Batch size : {TRAINING_CONFIG['batch']}")
-    print(f"   Taille d'image : {TRAINING_CONFIG['imgsz']}")
+    print(f"   Taille image : {TRAINING_CONFIG['imgsz']}")
     print(f"   Optimizer : {TRAINING_CONFIG['optimizer']}")
-    print(
-        f"   Learning rate : {TRAINING_CONFIG['lr0']} -> {TRAINING_CONFIG['lr0'] * TRAINING_CONFIG['lrf']}"
-    )
+    print(f"   Learning rate : {TRAINING_CONFIG['lr0']} -> {TRAINING_CONFIG['lr0'] * TRAINING_CONFIG['lrf']}")
     print(f"   Device : {device}")
 
     # Préparer les paramètres d'entraînement
@@ -171,43 +197,41 @@ def train_model(yaml_path, device):
     train_params.pop("model_size", None)
 
     print(f"\n🚀 Début de l'entraînement...")
-    print("   (Cela peut prendre plusieurs heures selon votre matériel)")
+    print("   (Temps estimé : 1-4h avec GPU, 10-24h avec CPU)")
 
     try:
-        # Entraîner le modèle
         results = model.train(**train_params)
 
         print("\n" + "=" * 60)
         print("✅ ENTRAÎNEMENT TERMINÉ AVEC SUCCÈS !")
         print("=" * 60)
 
-        # Afficher les métriques finales
+        # Métriques finales
         print(f"\n📊 Résultats finaux :")
-        print(f"   mAP50 : {results.results_dict.get('metrics/mAP50(B)', 'N/A')}")
-        print(f"   mAP50-95 : {results.results_dict.get('metrics/mAP50-95(B)', 'N/A')}")
-        print(
-            f"   Precision : {results.results_dict.get('metrics/precision(B)', 'N/A')}"
-        )
-        print(f"   Recall : {results.results_dict.get('metrics/recall(B)', 'N/A')}")
+        metrics = results.results_dict
+        print(f"   mAP50 : {metrics.get('metrics/mAP50(B)', 'N/A'):.4f}")
+        print(f"   mAP50-95 : {metrics.get('metrics/mAP50-95(B)', 'N/A'):.4f}")
+        print(f"   Precision : {metrics.get('metrics/precision(B)', 'N/A'):.4f}")
+        print(f"   Recall : {metrics.get('metrics/recall(B)', 'N/A'):.4f}")
 
         # Chemin du meilleur modèle
         best_model_path = (
             Path(train_params["project"]) / train_params["name"] / "weights" / "best.pt"
         )
-        print(f"\n💾 Meilleur modèle sauvegardé : {best_model_path}")
+        print(f"\n💾 Meilleur modèle : {best_model_path}")
 
-        # Copier le meilleur modèle dans models/final/
+        # Copier le meilleur modèle
         final_dir = MODELS_DIR / "final"
         final_dir.mkdir(exist_ok=True)
         final_model_path = final_dir / "best_model.pt"
 
         if best_model_path.exists():
             import shutil
-
             shutil.copy(best_model_path, final_model_path)
-            print(f"💾 Copie du modèle final : {final_model_path}")
+            print(f"💾 Copie finale : {final_model_path}")
 
         print(f"\n📌 Prochaine étape : python scripts/validate.py")
+        print(f"   ou testez avec : python scripts/detect_webcam.py")
 
         return results
 
@@ -221,8 +245,8 @@ def main():
     Fonction principale
     """
     print("=" * 60)
-    print("ENTRAÎNEMENT DU MODÈLE YOLO")
-    print("Détection du Code Vestimentaire ENSITECH")
+    print("ENTRAÎNEMENT YOLO - Code Vestimentaire ENSITECH")
+    print("Version 2 : Dataset Fashionpedia complet (46 catégories)")
     print("=" * 60)
 
     # Vérifier le GPU
@@ -231,15 +255,19 @@ def main():
     # Charger la configuration du dataset
     yaml_path = load_dataset_config()
 
-    # Demander confirmation
+    # Avertissement
     print("\n" + "=" * 60)
-    print("⚠️  ATTENTION")
+    print("⚠️  INFORMATION")
     print("=" * 60)
+    print("Classes détectées :")
+    print("  [0] short_bermuda - Short, bermuda")
+    print("  [1] jupe_courte   - Jupe (potentiellement mini-jupe)")
+    print("  [2] couvre_chef   - Casquette, chapeau, bonnet, bandana")
+    print()
     print("L'entraînement peut prendre plusieurs heures.")
     print("Assurez-vous d'avoir :")
     print("  - Suffisamment d'espace disque (~5-10 GB)")
-    print("  - Une connexion stable (pour télécharger le modèle)")
-    print("  - De ne pas éteindre votre ordinateur")
+    print("  - Une connexion stable")
 
     response = input("\n▶️  Voulez-vous continuer ? (o/n) : ").strip().lower()
 
@@ -247,10 +275,10 @@ def main():
         print("\n❌ Entraînement annulé.")
         return
 
-    # Entraîner le modèle
+    # Entraîner
     results = train_model(yaml_path, device)
 
-    print("\n🎉 Tout est terminé ! Vous pouvez maintenant valider votre modèle.")
+    print("\n🎉 Terminé ! Vous pouvez maintenant tester votre modèle.")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,10 @@
 """
-Script pour télécharger le dataset Fashionpedia depuis HuggingFace
+Télécharge les deux datasets nécessaires :
+- Fashionpedia complet (46 catégories, avec bounding boxes officiels)
+- iMaterialist filtré en streaming (crop tops, baggy jeans, tenue sport)
 """
 
 import json
-import os
 from pathlib import Path
 
 from datasets import load_dataset
@@ -12,143 +13,138 @@ from tqdm import tqdm
 # Configuration
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data" / "raw"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Catégories à extraire de iMaterialist (celles manquantes dans Fashionpedia)
+IMATERIALIST_TARGET_CATEGORIES = [
+    "Crop Tops",
+    "Baggy Jeans",
+    "Leggings",
+    "Athletic Pants",
+    "Athletic Sets",
+]
+
+# Nombre max d'images par catégorie depuis iMaterialist
+MAX_PER_CATEGORY = 3000
 
 
 def download_fashionpedia():
     """
-    Télécharge le dataset Fashionpedia 4 catégories depuis HuggingFace
-    """
-    print("=" * 60)
-    print("Téléchargement du dataset Fashionpedia")
-    print("=" * 60)
-
-    try:
-        # Téléchargement du dataset
-        print("\n📥 Chargement depuis HuggingFace...")
-        dataset = load_dataset("detection-datasets/fashionpedia_4_categories")
-
-        # Affichage des informations
-        print("\n✅ Dataset chargé avec succès !")
-        print(f"\n📊 Statistiques du dataset :")
-        print(f"  Splits disponibles : {list(dataset.keys())}")
-        print(f"  - Train : {len(dataset['train'])} images")
-
-        # Le dataset utilise 'val' au lieu de 'validation'
-        val_key = "val" if "val" in dataset else "validation"
-        test_key = "test" if "test" in dataset else None
-
-        if val_key in dataset:
-            print(f"  - Validation : {len(dataset[val_key])} images")
-        if test_key and test_key in dataset:
-            print(f"  - Test : {len(dataset[test_key])} images")
-
-        total = len(dataset["train"])
-        if val_key in dataset:
-            total += len(dataset[val_key])
-        if test_key and test_key in dataset:
-            total += len(dataset[test_key])
-        print(f"  - Total : {total} images")
-
-        # Catégories
-        print(f"\n🏷️  Catégories détectées :")
-        categories = {
-            0: "Accessories (Accessoires)",
-            1: "Bags (Sacs)",
-            2: "Clothing (Vêtements)",
-            3: "Shoes (Chaussures)",
-        }
-        for cat_id, cat_name in categories.items():
-            print(f"  - {cat_id}: {cat_name}")
-
-        # Sauvegarde des métadonnées
-        metadata = {
-            "dataset_name": "fashionpedia_4_categories",
-            "source": "huggingface",
-            "splits": {
-                "train": len(dataset["train"]),
-            },
-            "categories": categories,
-            "total_images": len(dataset["train"]),
-        }
-
-        # Ajouter val et test s'ils existent
-        if val_key in dataset:
-            metadata["splits"][val_key] = len(dataset[val_key])
-            metadata["total_images"] += len(dataset[val_key])
-        if test_key and test_key in dataset:
-            metadata["splits"][test_key] = len(dataset[test_key])
-            metadata["total_images"] += len(dataset[test_key])
-
-        metadata_path = DATA_DIR / "metadata.json"
-        with open(metadata_path, "w", encoding="utf-8") as f:
-            json.dump(metadata, f, indent=4, ensure_ascii=False)
-
-        print(f"\n💾 Métadonnées sauvegardées dans : {metadata_path}")
-
-        # Sauvegarde du dataset
-        print(f"\n💾 Sauvegarde du dataset dans : {DATA_DIR}")
-
-        # Sauvegarder chaque split disponible
-        for split_name in dataset.keys():
-            split_path = DATA_DIR / split_name
-            split_path.mkdir(exist_ok=True)
-
-            print(f"\n  Sauvegarde de '{split_name}'...")
-            dataset[split_name].save_to_disk(str(split_path))
-
-        print("\n" + "=" * 60)
-        print("✅ Téléchargement terminé avec succès !")
-        print("=" * 60)
-        print(f"\nProchaine étape : python scripts/prepare_dataset.py")
-
-        return dataset
-
-    except Exception as e:
-        print(f"\n❌ Erreur lors du téléchargement : {e}")
-        raise
-
-
-def inspect_sample():
-    """
-    Inspecte un échantillon du dataset pour comprendre la structure
+    Télécharge le dataset Fashionpedia complet (46 catégories)
+    depuis detection-datasets/fashionpedia sur HuggingFace.
     """
     print("\n" + "=" * 60)
-    print("Inspection d'un échantillon")
+    print("TÉLÉCHARGEMENT DE FASHIONPEDIA (complet)")
     print("=" * 60)
 
-    try:
-        dataset = load_dataset("detection-datasets/fashionpedia_4_categories")
-        sample = dataset["train"][0]
+    print("\n📥 Chargement depuis HuggingFace...")
+    dataset = load_dataset("detection-datasets/fashionpedia")
 
-        print(f"\n📝 Structure d'un exemple :")
-        print(f"  - image_id : {sample.get('image_id', 'N/A')}")
-        print(f"  - width : {sample.get('width', 'N/A')} px")
-        print(f"  - height : {sample.get('height', 'N/A')} px")
+    print("\n✅ Fashionpedia chargé")
+    print(f"📊 Splits disponibles : {list(dataset.keys())}")
+    for split_name in dataset.keys():
+        print(f"  - {split_name} : {len(dataset[split_name])} images")
 
-        if "objects" in sample:
-            objects = sample["objects"]
-            print(f"  - Nombre d'objets : {len(objects.get('bbox_id', []))}")
+    # Sauvegarde
+    save_dir = DATA_DIR / "fashionpedia"
+    print(f"\n💾 Sauvegarde dans : {save_dir}")
+    for split_name in dataset.keys():
+        split_path = save_dir / split_name
+        split_path.mkdir(parents=True, exist_ok=True)
+        print(f"  Sauvegarde de '{split_name}'...")
+        dataset[split_name].save_to_disk(str(split_path))
 
-            if len(objects.get("bbox_id", [])) > 0:
-                print(f"\n  Premier objet détecté :")
-                print(f"    - bbox_id : {objects['bbox_id'][0]}")
-                print(f"    - category : {objects['category'][0]}")
-                print(f"    - bbox : {objects['bbox'][0]}")
-                print(f"    - area : {objects['area'][0]}")
+    print("✅ Fashionpedia sauvegardé")
 
-        print("\n" + "=" * 60)
 
-    except Exception as e:
-        print(f"\n❌ Erreur lors de l'inspection : {e}")
+def download_imaterialist():
+    """
+    Télécharge iMaterialist en mode streaming pour éviter de charger
+    les 721k images en mémoire. On filtre uniquement les catégories
+    nécessaires et on sauvegarde max MAX_PER_CATEGORY images par catégorie.
+    """
+    print("\n" + "=" * 60)
+    print("TÉLÉCHARGEMENT DE iMaterialist (filtré)")
+    print("=" * 60)
+
+    print(f"\n🎯 Catégories cibles : {IMATERIALIST_TARGET_CATEGORIES}")
+    print(f"📏 Max {MAX_PER_CATEGORY} images par catégorie")
+
+    save_dir = DATA_DIR / "imaterialist"
+    total_target = MAX_PER_CATEGORY * len(IMATERIALIST_TARGET_CATEGORIES)
+
+    # Compteur par catégorie
+    collected = {cat: 0 for cat in IMATERIALIST_TARGET_CATEGORIES}
+
+    print("\n📥 Streaming depuis HuggingFace...")
+    dataset = load_dataset("Marqo/iMaterialist", streaming=True)
+
+    # Détecter le nom du split disponible
+    split_name = list(dataset.keys())[0]
+    print(f"  Split détecté : '{split_name}'")
+    stream = dataset[split_name]
+
+    total_collected = 0
+    for sample in stream:
+        category = sample.get("category")
+
+        # Ignorer si pas une catégorie cible ou si on a atteint le max
+        if category not in IMATERIALIST_TARGET_CATEGORIES:
+            continue
+        if collected[category] >= MAX_PER_CATEGORY:
+            # Vérifier si toutes les catégories sont pleines
+            if all(c >= MAX_PER_CATEGORY for c in collected.values()):
+                break
+            continue
+
+        # Créer le dossier pour cette catégorie
+        cat_dir = save_dir / category.replace(" ", "_")
+        cat_dir.mkdir(parents=True, exist_ok=True)
+
+        # Sauvegarder l'image
+        idx = collected[category]
+        sample["image"].save(str(cat_dir / f"{idx:06d}.jpg"), "JPEG")
+
+        collected[category] += 1
+        total_collected += 1
+
+        # Afficher la progression toutes les 500 images
+        if total_collected % 500 == 0:
+            status = ", ".join(f"{k}: {v}" for k, v in collected.items())
+            print(f"  [{total_collected}/{total_target}] {status}")
+
+    # Résumé final
+    print(f"\n📊 Images collectées :")
+    for cat, count in collected.items():
+        print(f"  • {cat}: {count}")
+    print(f"  • Total: {total_collected}")
+
+    # Sauvegarder le résumé
+    with open(save_dir / "summary.json", "w") as f:
+        json.dump(collected, f, indent=2)
+
+    print("✅ iMaterialist filtré et sauvegardé")
+
+
+def main():
+    print("=" * 60)
+    print("TÉLÉCHARGEMENT DES DATASETS")
+    print("Détection du Code Vestimentaire ENSITECH")
+    print("=" * 60)
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 1. Fashionpedia complet (avec bounding boxes)
+    download_fashionpedia()
+
+    # 2. iMaterialist filtré (catégories manquantes)
+    download_imaterialist()
+
+    print("\n" + "=" * 60)
+    print("✅ TOUS LES DATASETS TÉLÉCHARGÉS")
+    print("=" * 60)
+    print(f"\n📂 Données sauvegardées dans : {DATA_DIR}")
+    print(f"📌 Prochaine étape : python scripts/prepare_dataset.py")
 
 
 if __name__ == "__main__":
-    # Inspecter d'abord un échantillon
-    inspect_sample()
-
-    # Télécharger le dataset complet
-    dataset = download_fashionpedia()
-
-    print("\n📌 Le dataset est prêt à être traité !")
-    print(f"📂 Emplacement : {DATA_DIR}")
+    main()
