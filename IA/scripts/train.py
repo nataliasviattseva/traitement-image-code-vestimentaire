@@ -44,9 +44,9 @@ TRAINING_CONFIG = {
     # Paramètres d'entraînement
     # -----------------------------------------------------------------------
     "epochs": 150,            # Plus d'époques car on a beaucoup de négatifs
-    "batch": 16,              # Ajuster selon ta RAM/GPU (8 si peu de VRAM)
+    "batch": 32,              # Ajuster selon ta RAM/GPU (8 si peu de VRAM)
     "imgsz": 640,             # Taille standard
-    "patience": 30,           # Early stopping - réduit car 3 classes seulement
+    "patience": 20,           # Early stopping - réduit car 3 classes seulement
 
     # -----------------------------------------------------------------------
     # Optimisation
@@ -80,7 +80,7 @@ TRAINING_CONFIG = {
     # -----------------------------------------------------------------------
     "save": True,
     "save_period": 10,        # Checkpoint tous les 10 époques
-    "cache": False,           # True si RAM > 16GB pour accélérer
+    "cache": True,           # True si RAM > 16GB pour accélérer
     "device": "auto",
     "workers": 8,
     "project": str(MODELS_DIR),

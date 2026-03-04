@@ -39,7 +39,7 @@ data/processed/
 *.arrow
 
 # Models (trop volumineux pour git)
-models/dress_code_detection_*/
+models/dress*/
 models/pretrained/
 *.pt
 *.pth
