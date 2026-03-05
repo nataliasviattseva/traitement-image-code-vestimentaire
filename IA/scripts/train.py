@@ -38,12 +38,12 @@ TRAINING_CONFIG = {
     # yolov8m = medium - recommandé pour la production
     # yolov8l = large - meilleure précision, plus lent
     # yolov8x = extra large - le plus précis, le plus lent
-    "model_size": "yolov8s",  # Small : bon compromis pour 3 classes
+    "model_size": "yolov8n", 
 
     # -----------------------------------------------------------------------
     # Paramètres d'entraînement
     # -----------------------------------------------------------------------
-    "epochs": 150,            # Plus d'époques car on a beaucoup de négatifs
+    "epochs": 100,            # Plus d'époques car on a beaucoup de négatifs
     "batch": 32,              # Ajuster selon ta RAM/GPU (8 si peu de VRAM)
     "imgsz": 640,             # Taille standard
     "patience": 20,           # Early stopping - réduit car 3 classes seulement
@@ -82,7 +82,10 @@ TRAINING_CONFIG = {
     "save_period": 10,        # Checkpoint tous les 10 époques
     "cache": True,           # True si RAM > 16GB pour accélérer
     "device": "auto",
-    "workers": 8,
+    "workers": 12,
+    "amp": True,              # Mixed precision (plus rapide sur GPU modernes)
+    "rect": False,            # Pas de redimensionnement rectangulaire
+    "cos_lr": True,           # Cosine learning rate scheduler
     "project": str(MODELS_DIR),
     "name": f"dress_code_v2_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
     "exist_ok": True,
