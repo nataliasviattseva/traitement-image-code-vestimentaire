@@ -1,6 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from app.database import engine, Base
+from app.models import media, alert, violation
+from app.database import SessionLocal
+from app.models.violation import Violation
 import uuid
 import json
 import os
@@ -10,6 +14,7 @@ from typing import Set
 
 
 app = FastAPI(title="Projet IA", version="0.1.0")
+Base.metadata.create_all(bind=engine)
 
 # CORS (dev)
 app.add_middleware(
@@ -145,3 +150,19 @@ async def ws_alerts(websocket: WebSocket):
         manager.disconnect(websocket)
     except Exception:
         manager.disconnect(websocket)
+
+
+
+@app.get("/test-db")
+def test_db():
+    db = SessionLocal()
+
+    violation = Violation(
+        label="casquette",
+        description="Port de casquette interdit"
+    )
+
+    db.add(violation)
+    db.commit()
+
+    return {"message": "violation créée"}
