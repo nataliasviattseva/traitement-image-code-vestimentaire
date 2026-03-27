@@ -1,13 +1,13 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.models import Base
 
 
 class Violation(Base):
-    __tablename__ = "violation"
+    __tablename__ = "violations"
 
     id_violation = Column(Integer, primary_key=True, index=True)
     label = Column(String, nullable=False)
     description = Column(String)
 
-    alerts = relationship("Alert", back_populates="violation")
+    alertes = relationship("Alerte", back_populates="violation")
