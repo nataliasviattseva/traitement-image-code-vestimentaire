@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: 
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "8000:8000"
+    # environment:
+    #   - MEDIA_DIR=media
+    #   - MODEL_PATH=IA/model/yolov8n.pt
+    #   - CONF=0.25
+    #   - IOU=0.45
+    #   - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+    volumes:
+      # Mount IA package so backend can import IA.infer
+      - ./IA:/app/IA
+      # Persist generated images
+      - ./back/media:/app/media
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: front
+    ports:
+      - "3000:3000"
+    # environment:
+      # - BACKEND_URL=http://localhost:5000
+    depends_on:
+      - backend
