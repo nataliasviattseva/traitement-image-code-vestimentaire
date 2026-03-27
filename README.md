@@ -117,9 +117,3 @@ python scripts/send_alerts.py --types email push
 
 - Erreur module manquant :
   - `pip install -r requirements.txt`
-
-## Documentation complémentaire
-
-- `QUICKSTART.md` : guide complet pas-à-pas
-- `GUIDE_COMPLET.md` : documentation détaillée
-- `AIDE_MEMOIRE.md` : commandes utiles
