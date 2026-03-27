@@ -1,23 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
 
+class AlertResponse(BaseModel):
+    model_config = {"from_attributes": True}
 
-class AlertBase(BaseModel):
-    violation_type: str
+    id: str                # UUID → str
+    media_url: str
+    violation_label: str
+    detected_at: datetime
     confidence: float
-    image_url: Optional[str] = None
-    video_url: Optional[str] = None
-    location: Optional[str] = None
-
-
-class AlertCreate(AlertBase):
-    pass
-
-
-class AlertResponse(AlertBase):
-    id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    status: str

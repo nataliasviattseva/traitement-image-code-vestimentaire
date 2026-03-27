@@ -1,20 +1,18 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
+from sqlalchemy import Column, String, DateTime
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.models import Base
-
+from sqlalchemy import ForeignKey
+import uuid
+from app.models.base import Base
 
 class Alerte(Base):
     __tablename__ = "alertes"
 
-    id_alerte = Column(Integer, primary_key=True, index=True)
+    id        = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    image_id  = Column(UUID(as_uuid=True), ForeignKey("images.id"), nullable=False)
+    type      = Column(String, nullable=True)
+    statut    = Column(String, nullable=True)
+    envoye_at = Column(DateTime, nullable=True)
 
-    date_detect = Column(DateTime, default=datetime.utcnow)
-    confidence = Column(Float)
-    process_status = Column(String)
+    image     = relationship("Image", back_populates="alertes")
 
-    id_image = Column(Integer, ForeignKey("images.id_image"))
-    id_violation = Column(Integer, ForeignKey("violation.id_violation"))
-
-    image = relationship("Image", back_populates="alertes")
-    violation = relationship("Violation", back_populates="alertes")

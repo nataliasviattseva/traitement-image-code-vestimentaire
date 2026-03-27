@@ -1,6 +1,6 @@
+import json
 from typing import List
 from fastapi import WebSocket
-
 
 class ConnectionManager:
     def __init__(self):
@@ -15,8 +15,19 @@ class ConnectionManager:
             self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
+        dead = []
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except Exception:
+                dead.append(connection)
+
+        for ws in dead:
+            self.disconnect(ws)
+
+    async def broadcast_json(self, payload: dict):
+        message = json.dumps(payload)
+        await self.broadcast(message)
 
 
 manager = ConnectionManager()

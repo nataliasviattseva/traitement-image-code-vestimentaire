@@ -1,55 +1,31 @@
-import uuid
-from datetime import datetime
-from sqlalchemy.orm import Session
-from app.models.media import Media
-from app.models.violation import Violation
-from app.models.alert import Alert
-from app.schemas.detect import DetectRequest
-from app.schemas.alert import AlertResponse
-from datetime import datetime, timezone
+import json
+from typing import List
+from fastapi import WebSocket
 
-# Service to process detection results and create alerts in the database
-def process_detection(payload: DetectRequest, db: Session):
-    media_id = str(uuid.uuid4())
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
 
-    # Create alert in DB
-    media = Media(
-        id=media_id,
-        url=payload.media_url,
-        type=payload.media_type,
-        source=payload.source,
-    )
-    db.add(media)
-    db.commit()
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
 
-    alerts = []
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
-    # For each detected violation, create an alert
-    for v in payload.violations:
-        violation = db.query(Violation).filter(Violation.label == v.label).first()
-        if not violation:
-            continue  # ou raise
+    async def broadcast(self, message: str):
+        dead = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception:
+                dead.append(connection)
 
-        # Create alert
-        alert_id = str(uuid.uuid4())
-        alert = Alert(
-            id=alert_id,
-            media_id=media_id,
-            violation_id=violation.id,
-            confidence=v.confidence,
-        )
-        db.add(alert)
-        db.commit()
+        for ws in dead:
+            self.disconnect(ws)
 
-        # Prepare response for WebSocket broadcast
-        alerts.append(AlertResponse(
-            id=alert_id,
-            media_url=payload.media_url,
-            violation_label=violation.label,
-            violation_category=violation.category,
-            detected_at=datetime,
-            confidence=v.confidence,
-            status="new",
-        ))
+    async def broadcast_json(self, payload: dict):
+        await self.broadcast(json.dumps(payload))
 
-    return alerts
+manager = ConnectionManager()

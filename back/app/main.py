@@ -1,27 +1,14 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 from typing import Set
 import json
 
-from app.utils.database import engine
-from app.models import Base
-from app.utils.database import SessionLocal
-from app.models import alertes
-
-# Import des routes
 from app.api.routes.detect import router as detect_router
-
-from app.models import images, violations
 
 # --- FastAPI app ---
 app = FastAPI(title="Projet IA", version="0.1.0")
 
-# Création des tables
-#Base.metadata.create_all(bind=engine)
-app = FastAPI(title="Projet IA", version="0.1.0")
-
-# CORS
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,6 +42,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # --- Routes ---
+# Ton endpoint devient /api/detect
 app.include_router(detect_router, prefix="/api")
 
 # --- WebSocket ---
@@ -67,3 +55,4 @@ async def ws_alerts(websocket: WebSocket):
             _ = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
