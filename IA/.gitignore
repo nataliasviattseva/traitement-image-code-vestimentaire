@@ -82,3 +82,6 @@ wandb/
 # Cache
 .cache/
 *.cache
+
+# Environment variables
+.env
