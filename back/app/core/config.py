@@ -3,7 +3,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
 
-    app_name: str = "traitementImageBack"
+    app_name: str = "Projet_IA"
     debug: bool = True
     upload_dir: str = "uploads"
 
