@@ -1,20 +1,21 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.database import Base
+from sqlalchemy import Column, ForeignKey, String, Float, Boolean, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
 
+from app.models.base import Base
 
 class Alert(Base):
     __tablename__ = "alert"
 
-    id_alert = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    date_detect = Column(DateTime, default=datetime.utcnow)
-    confidence = Column(Float)
-    process_status = Column(String)
+    media_id = Column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=False)
+    violation_id = Column(UUID(as_uuid=True), ForeignKey("violation.id"), nullable=False)
 
-    id_media = Column(Integer, ForeignKey("media.id_media"))
-    id_violation = Column(Integer, ForeignKey("violation.id_violation"))
+    detected_at = Column(DateTime(timezone=True), server_default=func.now())
+    confidence = Column(Float, nullable=False)
+    status = Column(String)
+    sent_email = Column(Boolean, default=False)
+    sent_mobile = Column(Boolean, default=False)
 
-    media = relationship("Media", back_populates="alerts")
-    violation = relationship("Violation", back_populates="alerts")

@@ -1,16 +1,17 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.database import Base
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+from app.models.base import Base
 
 
 class Media(Base):
     __tablename__ = "media"
 
-    id_media = Column(Integer, primary_key=True, index=True)
-    url_cloudinary = Column(String, nullable=False)
-    type_media = Column(String)  # image ou video
-    date_upload = Column(DateTime, default=datetime.utcnow)
-    processed = Column(Boolean, default=False)
-
-    alerts = relationship("Alert", back_populates="media")
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url = Column(String, nullable=False)
+    public_id = Column(String, nullable=False)  # cloudinary public ID for deletion
+    type = Column(String, nullable=False)  # image or video
+    source = Column(String, nullable=False) # smartphone or camera
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)

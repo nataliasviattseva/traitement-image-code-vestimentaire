@@ -1,10 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-from app.database import engine, Base
-from app.models import media, alert, violation
-from app.database import SessionLocal
+from back.app.utils.database import engine, Base
+from sqlalchemy.orm import Session
+from app.schemas.detect import DetectRequest
+from app.schemas.alert import AlertResponse
+from app.models.media import Media
+from app.models.alert import Alert
 from app.models.violation import Violation
+from back.app.utils.database import SessionLocal
+from app.models.violation import Violation
+from app.services.alert_service import process_detection
 import uuid
 import json
 import os
@@ -104,34 +110,33 @@ async def upload_media(file: UploadFile = File(...)):
     uploaded = await persist_upload(file, ext)
     return {"ok": True, "uploaded": uploaded}
 
+# Detection route receiving detection results from IA, creating alerts in DB, and returning alert data for WS broadcast
+@app.post("/detect", response_model=list[AlertResponse])
+def detect(payload: DetectRequest, db: Session = Depends(get_db)):
+    return process_detection(payload, db)
 
-@app.post("/detect")
-async def detect(file: UploadFile = File(...)):
-    ext = validate_upload(file)
-    uploaded = await persist_upload(file, ext)
+# Route to list all alerts (for testing / admin)
+@app.get("/alerts", response_model=list[AlertResponse])
+def list_alerts(db: Session = Depends(get_db)):
+    rows = (
+        db.query(Alert, Media, Violation)
+        .join(Media, Alert.media_id == Media.id)
+        .join(Violation, Alert.violation_id == Violation.id)
+        .all()
+    )
 
-    # MOCK IA (à remplacer par appel HTTP vers service IA)
-    ia_result = {
-        "ok": True,
-        "non_conforme": True,
-        "reason": "no_helmet",
-        "confidence": 0.92,
-        "detections": [{"label": "helmet", "present": False, "confidence": 0.92}],
-    }
-
-    response = {"ok": True, "uploaded": uploaded, "result": ia_result}
-
-    # Si non-conforme -> broadcast WS
-    if ia_result.get("non_conforme") is True:
-        alert_payload = {
-            "type": "ALERT",
-            "reason": ia_result.get("reason"),
-            "confidence": ia_result.get("confidence"),
-            "filename": uploaded["filename"],
-        }
-        await manager.broadcast_json(alert_payload)
-
-    return response
+    return [
+        AlertResponse(
+            id=a.id,
+            media_url=m.url,
+            violation_label=v.label,
+            violation_category=v.category,
+            detected_at=a.detected_at,
+            confidence=a.confidence,
+            status=a.status,
+        )
+        for (a, m, v) in rows
+    ]
 
 
 @app.websocket("/ws/alerts")

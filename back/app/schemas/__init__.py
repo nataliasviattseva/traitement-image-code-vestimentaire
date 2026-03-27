@@ -1,2 +1,2 @@
-from .alert import AlertCreate, AlertResponse
-from .detect import DetectionRequest, DetectionResult
+from .alertResponse import AlertCreate, AlertResponse
+from .detectRequest import DetectionRequest, DetectionResult
