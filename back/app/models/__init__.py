@@ -1,3 +1,3 @@
-from .media import Media
-from .alert import Alert
-from .violation import Violation
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()

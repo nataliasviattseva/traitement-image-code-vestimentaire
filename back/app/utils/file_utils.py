@@ -50,4 +50,3 @@ def extract_public_id(url: str) -> str:
     public_id = f"{folder}/{filename.split('.')[0]}"
 
     return public_id
-
